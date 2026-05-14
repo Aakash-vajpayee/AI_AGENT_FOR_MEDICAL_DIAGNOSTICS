@@ -21,19 +21,32 @@ if not api_key:
     st.error("API Key nahi mili! Streamlit Secrets ya apikey.env check karein.")
     st.stop()
 
+# ... (upar ka code same rahega)
+
 llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-lite", google_api_key=api_key)
 
 # 4. Read the medical report
-# Dhyan dein: file name mein 'Rerort' ki jagah 'Report' ho sakta hai, path sahi check karein
-# Purani line hata kar ye likhein
-file_path = "Medical Reports/Medical Rerort - Michael Johnson - Panic Attack Disorder.txt"
+# --- Is section ko replace karein (Line 29-30) ---
+import os
+path_with_txt = "Medical Reports/Medical Rerort - Michael Johnson - Panic Attack Disorder.txt"
+path_without_txt = "Medical Reports/Medical Rerort - Michael Johnson - Panic Attack Disorder"
+
+if os.path.exists(path_with_txt):
+    file_path = path_with_txt
+elif os.path.exists(path_without_txt):
+    file_path = path_without_txt
+else:
+    st.error(f"🚨 File nahi mili! Folder mein check karein.")
+    st.write("Dhoondi gayi file: ", path_with_txt)
+    st.stop()
+# --- Replacement Khatam ---
 
 try:
-    with open(file_path, "r", encoding="utf-8") as file:
-        medical_report = file.read()
-except FileNotFoundError:
-    st.error(f"File nahi mili! Path check karein: {file_path}")
-    st.stop() # exit() ki jagah ye use karein
+    with open(file_path, "r", encoding="utf-8") as file: # <--- 1 Tab space
+        medical_report = file.read() # <--- 2 Tab spaces (with ke andar)
+except Exception as e: # <--- try ke niche bilkul barabar
+    st.error(f"Error reading file: {e}")
+    st.stop()
 
 # 5. Function to run agent with retry
 def run_agent_with_retry(agent, name, retries=3, wait=60):
