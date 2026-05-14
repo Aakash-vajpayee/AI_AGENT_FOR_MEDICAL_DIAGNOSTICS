@@ -5,8 +5,11 @@ from Utils.Agents import Cardiologist, Psychologist, Pulmonologist, Multidiscipl
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 # Loading API key
-load_dotenv(dotenv_path='apikey.env')
-api_key = os.getenv("GOOGLE_API_KEY")
+try:
+    api_key = st.secrets["GOOGLE_API_KEY"]
+except:
+    load_dotenv(dotenv_path='apikey.env')
+    api_key = os.getenv("GOOGLE_API_KEY")
 
 # Gemini Model Setup
 llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-lite", google_api_key=api_key)
