@@ -1,74 +1,117 @@
+import streamlit as st  # <-- Sabse pehle ye hona chahiye
 import os
 import time
 from dotenv import load_dotenv
 from Utils.Agents import Cardiologist, Psychologist, Pulmonologist, MultidisciplinaryTeam
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-# Loading API key
+# 1. Title aur Page Config (Optional par accha lagta hai)
+st.set_page_config(page_title="MediAI Diagnostics", page_icon="🩺")
+
+# 2. Loading API key
 try:
     api_key = st.secrets["GOOGLE_API_KEY"]
 except:
     load_dotenv(dotenv_path='apikey.env')
     api_key = os.getenv("GOOGLE_API_KEY")
 
-# Gemini Model Setup
+# 3. Gemini Model Setup
+# Check karein ki api_key khali toh nahi hai
+if not api_key:
+    st.error("API Key nahi mili! Streamlit Secrets ya apikey.env check karein.")
+    st.stop()
+
 llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-lite", google_api_key=api_key)
 
-# Read the medical report
+# 4. Read the medical report
+# Dhyan dein: file name mein 'Rerort' ki jagah 'Report' ho sakta hai, path sahi check karein
+# Purani line hata kar ye likhein
+file_path = "Medical Reports/Medical Rerort - Michael Johnson - Panic Attack Disorder.txt"
+
 try:
-    with open("Medical Reports/Medical Rerort - Michael Johnson - Panic Attack Disorder.txt", "r") as file:
+    with open(file_path, "r", encoding="utf-8") as file:
         medical_report = file.read()
 except FileNotFoundError:
-    print("Error: Medical report file nahi mili. Path check karein.")
-    exit()
+    st.error(f"File nahi mili! Path check karein: {file_path}")
+    st.stop() # exit() ki jagah ye use karein
 
-# Function to run agent with retry
+# 5. Function to run agent with retry
 def run_agent_with_retry(agent, name, retries=3, wait=60):
     agent.llm = llm
     for attempt in range(retries):
         try:
-            print(f"{name} is running... (attempt {attempt+1})")
+            # print() terminal mein dikhega, screen ke liye hum progress messages use karenge
             response = agent.run()
             if response:
-                print(f"{name} ne report taiyar kar li hai.")
                 return response
         except Exception as e:
-            print(f"{name} error: quota limit - {wait} second wait kar raha hoon...")
+            st.warning(f"{name} error (Attempt {attempt+1}): Quota limit hit. {wait}s wait kar rahe hain...")
             time.sleep(wait)
     return f"{name}: Analysis fail ho gayi quota ki wajah se."
 
-# Run agents ONE BY ONE with delay
-print("Agents processing shuru ho gayi hai...")
+# 6. UI Header
+st.title("🏥 MediAI Multi-Agent Diagnostic System")
+st.markdown("---")
+
+# 7. Agent Execution
 responses = {}
 
-responses["Cardiologist"] = run_agent_with_retry(Cardiologist(medical_report), "Cardiologist")
-time.sleep(30)
+# Cardiologist
+with st.spinner("🩺 Cardiologist analysis kar raha hai..."):
+    responses["Cardiologist"] = run_agent_with_retry(Cardiologist(medical_report), "Cardiologist")
+    if "fail" not in responses["Cardiologist"]:
+        st.success("✅ Cardiologist ne report taiyar kar li hai.")
+    else:
+        st.error("❌ Cardiologist analysis fail ho gayi.")
 
-responses["Psychologist"] = run_agent_with_retry(Psychologist(medical_report), "Psychologist")
-time.sleep(30)
+time.sleep(5)
 
-responses["Pulmonologist"] = run_agent_with_retry(Pulmonologist(medical_report), "Pulmonologist")
-time.sleep(30)
+# Psychologist
+with st.spinner("🧠 Psychologist report check kar raha hai..."):
+    responses["Psychologist"] = run_agent_with_retry(Psychologist(medical_report), "Psychologist")
+    if "fail" not in responses["Psychologist"]:
+        st.success("✅ Psychologist ne report taiyar kar li hai.")
+    else:
+        st.error("❌ Psychologist analysis fail ho gayi.")
 
-# Multidisciplinary Team
-print("Final diagnosis banayi ja rahi hai...")
-team_agent = MultidisciplinaryTeam(
-    cardiologist_report=responses.get("Cardiologist", "No data"),
-    psychologist_report=responses.get("Psychologist", "No data"),
-    pulmonologist_report=responses.get("Pulmonologist", "No data")
-)
-team_agent.llm = llm
-final_diagnosis = run_agent_with_retry(team_agent, "MultidisciplinaryTeam")
+time.sleep(5)
 
-if not final_diagnosis:
-    final_diagnosis = "Error: AI response generate nahi ho paya."
+# Pulmonologist
+with st.spinner("🫁 Pulmonologist lung health analyze kar raha hai..."):
+    responses["Pulmonologist"] = run_agent_with_retry(Pulmonologist(medical_report), "Pulmonologist")
+    if "fail" not in responses["Pulmonologist"]:
+        st.success("✅ Pulmonologist ne report taiyar kar li hai.")
+    else:
+        st.error("❌ Pulmonologist analysis fail ho gayi.")
 
-# Save result
-final_diagnosis_text = "### Final Diagnosis:\n\n" + str(final_diagnosis)
-txt_output_path = "results/final_diagnosis.txt"
-os.makedirs(os.path.dirname(txt_output_path), exist_ok=True)
+# 8. Final Diagnosis (Multidisciplinary Team)
+st.divider()
+st.subheader("👨‍⚕️ Final Consultation")
 
-with open(txt_output_path, "w", encoding="utf-8") as txt_file:
-    txt_file.write(final_diagnosis_text)
+with st.spinner("Sare agents ki reports combine karke final diagnosis banayi ja rahi hai..."):
+    team_agent = MultidisciplinaryTeam(
+        cardiologist_report=responses.get("Cardiologist", "No data"),
+        psychologist_report=responses.get("Psychologist", "No data"),
+        pulmonologist_report=responses.get("Pulmonologist", "No data")
+    )
+    team_agent.llm = llm
+    final_diagnosis = run_agent_with_retry(team_agent, "MultidisciplinaryTeam")
 
-print(f"\nSuccess! Final diagnosis save ho gayi hai: {txt_output_path}")
+# 9. Display Final Result
+if final_diagnosis and "fail" not in str(final_diagnosis):
+    st.header("📋 Final Medical Analysis Report")
+    st.markdown(final_diagnosis)
+    st.balloons()
+    
+    # Save result
+    final_diagnosis_text = "### Final Diagnosis:\n\n" + str(final_diagnosis)
+    txt_output_path = "results/final_diagnosis.txt"
+    os.makedirs(os.path.dirname(txt_output_path), exist_ok=True)
+    
+    with open(txt_output_path, "w", encoding="utf-8") as txt_file:
+        txt_file.write(final_diagnosis_text)
+    
+    st.sidebar.success(f"Report saved: {txt_output_path}")
+    st.sidebar.caption("made with ❤️ by Aakash Vajpayee")
+else:
+    st.error("Error: AI response generate nahi ho paya. Quota check karein.")
