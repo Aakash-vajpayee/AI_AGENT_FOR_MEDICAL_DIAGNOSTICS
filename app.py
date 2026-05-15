@@ -96,7 +96,14 @@ label { color: rgba(255,255,255,0.6) !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# SIDEBAR
+# ── API KEY LOAD ──────────────────────────────────────────────
+try:
+    api_key = st.secrets["GOOGLE_API_KEY"]
+except:
+    load_dotenv(dotenv_path='apikey.env')
+    api_key = os.getenv("GOOGLE_API_KEY")
+
+# ── SIDEBAR ───────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("""
     <div style="text-align:center; padding: 24px 0 20px;">
@@ -112,13 +119,10 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    load_dotenv(dotenv_path='apikey.env')
-    api_key = os.getenv("GOOGLE_API_KEY")
-
     if api_key:
         st.markdown('<div style="background:rgba(0,255,136,0.08); border:1px solid rgba(0,255,136,0.25); border-radius:12px; padding:12px 16px; margin:8px 0;"><span class="status-dot"></span><span style="color:#00ff88; font-size:13px; font-weight:500;">Gemini API Connected</span></div>', unsafe_allow_html=True)
     else:
-        st.error("❌ API Key missing!")
+        st.error("❌ API Key missing! Streamlit Secrets mein GOOGLE_API_KEY add karein.")
         st.stop()
 
     st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
@@ -147,7 +151,7 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-# HERO
+# ── HERO ──────────────────────────────────────────────────────
 st.markdown("""
 <div style="text-align:center; padding: 50px 20px 30px;">
     <div class="hero-badge">🧬 Powered by Google Gemini AI</div>
@@ -163,7 +167,7 @@ st.markdown("""
 <div class="custom-divider"></div>
 """, unsafe_allow_html=True)
 
-# UPLOAD
+# ── UPLOAD ────────────────────────────────────────────────────
 st.markdown('<div class="upload-box">', unsafe_allow_html=True)
 st.markdown("### 📋 Upload Medical Report")
 st.markdown('<p style="color:rgba(255,255,255,0.4); font-size:14px; margin-top:-10px;">Upload a .txt file or paste report text manually</p>', unsafe_allow_html=True)
@@ -184,7 +188,7 @@ else:
 st.markdown('</div>', unsafe_allow_html=True)
 st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
 
-# RUN
+# ── RUN ───────────────────────────────────────────────────────
 if st.button("🚀 Run AI Diagnosis", use_container_width=True):
     if not medical_report.strip():
         st.warning("⚠️ Please upload or paste a medical report first!")
